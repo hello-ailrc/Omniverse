@@ -37,3 +37,6 @@ export const NextSentence = () => <Svg><path d="M18 5v14" /><path d="M5 5l9 7-9 
 export const Rewind = () => <Svg><path d="M12 6l-8 6 8 6V6z" /><path d="M21 6l-8 6 8 6V6z" /></Svg>;
 export const Forward = () => <Svg><path d="M3 6l8 6-8 6V6z" /><path d="M12 6l8 6-8 6V6z" /></Svg>;
 export const ChevronDown = () => <Svg><path d="M6 9l6 6 6-6" /></Svg>;
+export const ArrowLeft = () => <Svg size={18}><path d="M19 12H5M11 6l-6 6 6 6" /></Svg>;
+export const ArrowRight = () => <Svg size={18}><path d="M5 12h14M13 6l6 6-6 6" /></Svg>;
+export const Speaker = () => <Svg size={18}><path d="M4 10v4h4l5 4V6L8 10H4z" /><path d="M17 9a4 4 0 010 6" /></Svg>;

@@ -1,6 +1,6 @@
 // Local-first storage. Everything the app saves goes through this file, so cloud
 // sync (Supabase) can be added behind the same functions without touching the UI.
-import { get, set, del } from 'idb-keyval';
+import { get, getMany, set, del } from 'idb-keyval';
 import { DEFAULT_SETTINGS, type Doc, type DocMeta, type Mark, type Settings } from './types';
 
 const INDEX = 'index';
@@ -46,6 +46,14 @@ export async function getMarks(docId: string): Promise<Mark[]> {
 
 export async function setMarks(docId: string, marks: Mark[]): Promise<void> {
   await set('marks:' + docId, marks);
+}
+
+// Every mark in the library, each with the article it belongs to.
+export async function getAllMarks(): Promise<{ doc: DocMeta; mark: Mark }[]> {
+  const docs = await listDocs();
+  if (docs.length === 0) return [];
+  const lists = await getMany<Mark[] | undefined>(docs.map((d) => 'marks:' + d.id));
+  return docs.flatMap((d, i) => (lists[i] ?? []).map((mark) => ({ doc: d, mark })));
 }
 
 const SETTINGS_KEY = 'reader-settings';

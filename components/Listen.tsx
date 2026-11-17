@@ -2,10 +2,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { pivotIndex, segmentsOf, type TextModel } from '@/lib/text';
 import type { Doc, MarkColor, Settings, TextRange } from '@/lib/types';
+import { SPOKEN_WPM, useSpeech } from '@/lib/useSpeech';
 import { ChevronDown, Close, NextSentence, Pause, Play, PrevSentence } from './icons';
 import { StyleSwitch, Swatches } from './MarkBar';
-
-const WORDS_PER_SECOND = 2.7; // typical speaking pace at 1x
 
 export default function Listen({
   doc,
@@ -27,17 +26,10 @@ export default function Listen({
   onClose: (i: number) => void;
 }) {
   const { tokens, sentences } = model;
-  const supported = typeof window !== 'undefined' && 'speechSynthesis' in window;
   const [idx, setIdx] = useState(Math.min(startIdx, Math.max(0, tokens.length - 1)));
-  const [playing, setPlaying] = useState(false);
-  const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
   const [view, setView] = useState<'sentence' | 'rsvp'>('sentence');
   const [showText, setShowText] = useState(true);
-
-  const gen = useRef(0);
   const idxRef = useRef(idx);
-  const live = useRef({ rate: settings.rate, voiceURI: settings.voiceURI, voices });
-  live.current = { rate: settings.rate, voiceURI: settings.voiceURI, voices };
 
   const setCur = useCallback(
     (i: number) => {
@@ -48,78 +40,19 @@ export default function Listen({
     [onIdx],
   );
 
-  const stop = useCallback(() => {
-    gen.current++;
-    if (supported) window.speechSynthesis.cancel();
-    setPlaying(false);
-  }, [supported]);
-
-  // Speak from a given word to the end of its sentence, then carry on with the next sentence.
-  const speakFrom = useCallback(
-    (i: number) => {
-      if (!supported) return;
-      const synth = window.speechSynthesis;
-      const mine = ++gen.current;
-      synth.cancel();
-      const t = tokens[i];
-      if (!t) {
-        setPlaying(false);
-        return;
-      }
-      const s = sentences[t.sent];
-      const u = new SpeechSynthesisUtterance(doc.blocks[s.block].text.slice(t.start, s.end));
-      u.rate = live.current.rate;
-      const v = live.current.voices.find((x) => x.voiceURI === live.current.voiceURI);
-      if (v) {
-        u.voice = v;
-        u.lang = v.lang;
-      }
-      u.onboundary = (e) => {
-        if (mine !== gen.current) return;
-        if (e.name && e.name !== 'word') return;
-        const abs = t.start + e.charIndex;
-        let k = t.i;
-        while (k < s.last && tokens[k].end <= abs) k++;
-        setCur(k);
-      };
-      u.onend = () => {
-        if (mine !== gen.current) return;
-        const next = s.last + 1;
-        if (next < tokens.length) speakFrom(next);
-        else setPlaying(false);
-      };
-      u.onerror = () => {
-        if (mine !== gen.current) return;
-        setPlaying(false);
-      };
-      setCur(i);
-      setPlaying(true);
-      // A short gap after cancel() avoids the utterance being dropped in some browsers.
-      window.setTimeout(() => {
-        if (mine === gen.current) synth.speak(u);
-      }, 60);
-    },
-    [supported, tokens, sentences, doc, setCur],
-  );
-
-  useEffect(() => {
-    if (!supported) return;
-    const synth = window.speechSynthesis;
-    const load = () => setVoices(synth.getVoices());
-    load();
-    synth.addEventListener('voiceschanged', load);
-    return () => synth.removeEventListener('voiceschanged', load);
-  }, [supported]);
+  const { supported, playing, voices, speakFrom, stop } = useSpeech({
+    doc,
+    model,
+    rate: settings.rate,
+    voiceURI: settings.voiceURI,
+    onWord: setCur,
+  });
 
   // Start on open, stop on close.
   useEffect(() => {
     onIdx(idxRef.current);
     speakFrom(idxRef.current);
-    return () => {
-      gen.current++;
-      if (supported) window.speechSynthesis.cancel();
-      onIdx(null);
-    };
+    return () => onIdx(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -141,17 +74,19 @@ export default function Listen({
     const n = sentences[sent.i + 1];
     if (n) jump(n.first);
   };
-  const seekSeconds = (sec: number) => jump(idx + Math.round(sec * WORDS_PER_SECOND * settings.rate));
+  const seekSeconds = (sec: number) => jump(idx + Math.round(((sec * SPOKEN_WPM) / 60) * settings.rate));
 
+  // Restart after the new setting has been applied.
+  const restart = () => {
+    if (playing) window.setTimeout(() => speakFrom(idxRef.current), 0);
+  };
   const setRate = (rate: number) => {
     update({ rate });
-    live.current.rate = rate;
-    if (playing) speakFrom(idxRef.current);
+    restart();
   };
   const setVoice = (voiceURI: string) => {
     update({ voiceURI });
-    live.current.voiceURI = voiceURI;
-    if (playing) speakFrom(idxRef.current);
+    restart();
   };
 
   if (!supported) {
@@ -173,7 +108,7 @@ export default function Listen({
   const prev = sentences[sent.i - 1];
   const next = sentences[sent.i + 1];
   const remaining = tokens.length - idx;
-  const minsLeft = Math.max(1, Math.round(remaining / (WORDS_PER_SECOND * 60 * settings.rate)));
+  const minsLeft = Math.max(1, Math.round(remaining / (SPOKEN_WPM * settings.rate)));
   const p = pivotIndex(tok.word);
   const blockText = doc.blocks[sent.block].text;
 
