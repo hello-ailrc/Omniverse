@@ -204,6 +204,16 @@ export default function Rsvp({
         </section>
       )}
 
+      <div className="rsvp-marks">
+        <div className="mark-row" style={{ justifyContent: 'center' }}>
+        <span className="muted mark-label" style={{ fontSize: 13, marginRight: 4 }}>
+          Mark this sentence
+        </span>
+        <Swatches color={null} style={settings.armedStyle} onPick={(c) => onMark(sent, c)} />
+        <StyleSwitch style={settings.armedStyle} onStyle={(s) => update({ armedStyle: s })} />
+      </div>
+      </div>
+
       <button className="stage" onClick={toggle} aria-label={playing ? 'Pause' : 'Play'}>
         <span className="tick" aria-hidden="true" />
         {playing && count > 0 ? (
@@ -218,20 +228,10 @@ export default function Rsvp({
           </span>
         )}
         <span className="tick" aria-hidden="true" />
-        <span className="muted" style={{ fontSize: 14, marginTop: 10 }}>
-          {playing ? 'Tap to pause' : 'Paused · tap to resume'}
-        </span>
+        <span className="muted stage-hint">{playing ? 'Tap to pause' : 'Paused · tap to resume'}</span>
       </button>
 
       <div className="rsvp-bottom">
-        <div className="mark-row" style={{ justifyContent: 'center' }}>
-          <span className="muted mark-label" style={{ fontSize: 13, marginRight: 4 }}>
-            Mark this sentence
-          </span>
-          <Swatches color={null} style={settings.armedStyle} onPick={(c) => onMark(sent, c)} />
-          <StyleSwitch style={settings.armedStyle} onStyle={(s) => update({ armedStyle: s })} />
-        </div>
-
         <div className="slider">
           <label htmlFor="rsvp-pos" className="top">
             <span>
