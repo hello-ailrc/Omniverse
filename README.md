@@ -15,7 +15,9 @@ Then open http://localhost:3000.
 - Reader with four themes plus a custom theme, text size, and saved reading position.
 - Mark bar (left edge on tablet and laptop, bottom edge on phone): five colours, underline or highlight, reference flag, pen mode, notes, copy, delete.
 - Notebook grouped by tag, with one-tap copy of all marks as Markdown.
-- RSVP with a context strip, focus letter, sentence and 10-word seek, speed and words-at-a-time controls, and "mark this sentence".
+- Tap a mark for a pop-up: recolour, grow or shrink it word by word, flag, note, copy, delete.
+- Highlights section in the library: every mark across all articles, with search and filters, each opening its article at that spot.
+- RSVP with a context strip, focus letter, sentence and 10-word seek, speed and words-at-a-time controls, "mark this sentence", and an optional voice that reads along.
 - Listening with the device's built-in voices, a Now Reading panel (sentence or RSVP view), sentence and 5-second seek, speed and voice controls.
 
 ## Not yet built

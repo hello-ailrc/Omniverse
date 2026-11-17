@@ -84,6 +84,7 @@ export type Settings = {
   armedColor: MarkColor;
   armedStyle: MarkStyle;
   notebook: boolean;
+  rsvpVoice: boolean;
 };
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -101,4 +102,5 @@ export const DEFAULT_SETTINGS: Settings = {
   armedColor: 'neutral',
   armedStyle: 'highlight',
   notebook: true,
+  rsvpVoice: false,
 };

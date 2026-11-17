@@ -560,6 +560,110 @@ input[type='color'] {
   border-radius: 10px;
 }
 
+/* Pop-up beside a tapped mark */
+.popup {
+  position: fixed;
+  z-index: 35;
+  background: var(--panel);
+  border: 1px solid var(--line2);
+  border-radius: 14px;
+  padding: 8px 12px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+  font-size: 13px;
+}
+.popup .row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+.popup .mark-row {
+  gap: 0;
+  flex-wrap: nowrap;
+}
+.popup .swatch {
+  width: 42px;
+}
+.popup .adjust {
+  justify-content: flex-start;
+}
+.popup .actions {
+  flex-wrap: wrap;
+  justify-content: flex-start;
+}
+.icon-btn.edge {
+  border: 1px solid var(--line2);
+}
+.btn.sm {
+  height: 44px;
+  padding: 0 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+}
+.btn.sm[aria-pressed='true'] {
+  border-color: var(--sw-flag);
+  color: var(--sw-flag);
+}
+.btn.danger {
+  color: var(--sw-red);
+  border-color: color-mix(in srgb, var(--sw-red) 55%, var(--bg));
+}
+
+/* Highlights list in the library */
+.chips {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+.chip {
+  height: 44px;
+  padding: 0 14px;
+  flex: none;
+  background: none;
+  border: 1px solid var(--line2);
+  border-radius: 22px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--muted);
+}
+.chip[aria-pressed='true'] {
+  background: var(--line);
+  color: var(--fg);
+  border-color: var(--fg);
+}
+.hl-item {
+  padding: 14px 0 !important;
+  gap: 6px !important;
+}
+.hl-text {
+  font-size: 17px;
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 5;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.hl-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.lib-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
 /* Now Reading panel (listening) */
 .now {
   flex: none;
@@ -780,6 +884,13 @@ select.btn {
     border-top: 1px solid var(--line2);
     border-radius: 16px 16px 0 0;
     padding-bottom: calc(20px + env(safe-area-inset-bottom));
+  }
+  .popup {
+    left: 8px !important;
+    right: 8px;
+    width: auto !important;
+    top: auto !important;
+    bottom: calc(70px + env(safe-area-inset-bottom)) !important;
   }
   .pill .txt {
     display: none;

@@ -1,6 +1,6 @@
 'use client';
 import Link from 'next/link';
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { getDoc, getMarks, newId, savePosition, setMarks as persistMarks } from '@/lib/store';
 import { buildText, segmentsOf, selectionRanges } from '@/lib/text';
 import {
@@ -18,7 +18,7 @@ import {
   type ThemeName,
 } from '@/lib/types';
 import { useSettings } from '@/lib/useSettings';
-import { Back, Bolt, Copy, Headphones, Note, Panel, Pencil, Trash } from './icons';
+import { ArrowLeft, ArrowRight, Back, Bolt, Close, Copy, Flag, Headphones, Note, Panel, Pencil, Trash } from './icons';
 import { FlagButton, StyleSwitch, Swatches } from './MarkBar';
 import Listen from './Listen';
 import Rsvp from './Rsvp';
@@ -161,6 +161,85 @@ function Notebook({
   );
 }
 
+// The pop-up that opens next to a tapped mark: recolour, resize word by word, flag, note, copy, delete.
+function MarkPopup({
+  mark,
+  pos,
+  onColor,
+  onStyle,
+  onResize,
+  onFlag,
+  onNote,
+  onCopy,
+  onDelete,
+  onClose,
+}: {
+  mark: Mark;
+  pos: CSSProperties;
+  onColor: (c: MarkColor) => void;
+  onStyle: (s: MarkStyle) => void;
+  onResize: (edge: 'start' | 'end', dir: -1 | 1) => void;
+  onFlag: () => void;
+  onNote: () => void;
+  onCopy: () => void;
+  onDelete: () => void;
+  onClose: () => void;
+}) {
+  return (
+    <div className="popup" role="dialog" aria-label="Edit this mark" style={pos} onPointerDown={(e) => e.preventDefault()}>
+      <div className="row">
+        <span className="nb-tag">
+          <span className={'nb-dot' + (mark.style === 'underline' ? ' under' : '')} style={{ background: swatchVar(mark.color, mark.style) }} />
+          {tagOf(mark.color, mark.style)}
+        </span>
+        <button className="icon-btn" aria-label="Close" onClick={onClose}>
+          <Close />
+        </button>
+      </div>
+      <div className="mark-row">
+        <Swatches color={mark.color} style={mark.style} onPick={onColor} />
+        <StyleSwitch style={mark.style} onStyle={onStyle} />
+      </div>
+      <div className="row adjust">
+        <span className="muted">Start</span>
+        <button className="icon-btn edge" aria-label="Start one word earlier" onClick={() => onResize('start', -1)}>
+          <ArrowLeft />
+        </button>
+        <button className="icon-btn edge" aria-label="Start one word later" onClick={() => onResize('start', 1)}>
+          <ArrowRight />
+        </button>
+        <span className="muted" style={{ marginLeft: 'auto' }}>
+          End
+        </span>
+        <button className="icon-btn edge" aria-label="End one word earlier" onClick={() => onResize('end', -1)}>
+          <ArrowLeft />
+        </button>
+        <button className="icon-btn edge" aria-label="End one word later" onClick={() => onResize('end', 1)}>
+          <ArrowRight />
+        </button>
+      </div>
+      <div className="row actions">
+        <button className="btn sm" aria-pressed={mark.flag} onClick={onFlag}>
+          <Flag />
+          {mark.flag ? 'Flagged' : 'Flag'}
+        </button>
+        <button className="btn sm" onClick={onNote}>
+          <Note />
+          Note
+        </button>
+        <button className="btn sm" onClick={onCopy}>
+          <Copy />
+          Copy
+        </button>
+        <button className="btn sm danger" onClick={onDelete}>
+          <Trash />
+          Delete
+        </button>
+      </div>
+    </div>
+  );
+}
+
 const THEMES: { name: ThemeName; label: string; bg: string; fg: string }[] = [
   { name: 'charcoal', label: 'Charcoal', bg: '#262624', fg: '#ece9e1' },
   { name: 'gold', label: 'Gold', bg: '#1c1b19', fg: '#ddbf73' },
@@ -235,6 +314,7 @@ export default function Reader({ id }: { id: string }) {
   const [pos, setPos] = useState(0);
   const [ttsIdx, setTtsIdx] = useState<number | null>(null);
   const [toast, setToast] = useState('');
+  const [popPos, setPopPos] = useState<CSSProperties | null>(null);
 
   const pendingRef = useRef<TextRange[]>([]);
   const articleRef = useRef<HTMLElement | null>(null);
@@ -348,6 +428,23 @@ export default function Reader({ id }: { id: string }) {
     commit(marksRef.current.filter((m) => m.id !== selectedId));
     setSelectedId(null);
   }, [commit, selectedId]);
+
+  // Grow or shrink a mark by one word at either end.
+  const resizeSelected = (edge: 'start' | 'end', dir: -1 | 1) => {
+    const m = marksRef.current.find((x) => x.id === selectedId);
+    if (!m || !doc) return;
+    const toks = model.tokens.filter((t) => t.block === m.block);
+    let { start, end } = m;
+    if (edge === 'start') {
+      const t = dir < 0 ? [...toks].reverse().find((x) => x.start < start) : toks.find((x) => x.start > start && x.start < end);
+      if (t) start = t.start;
+    } else {
+      const t = dir > 0 ? toks.find((x) => x.end > end) : [...toks].reverse().find((x) => x.end < end && x.end > start);
+      if (t) end = t.end;
+    }
+    if (start === m.start && end === m.end) return;
+    patchMark(m.id, { start, end, text: doc.blocks[m.block].text.slice(start, end) });
+  };
 
   const noteSelected = () => {
     const m = marksRef.current.find((x) => x.id === selectedId);
@@ -489,6 +586,14 @@ export default function Reader({ id }: { id: string }) {
   useEffect(() => {
     if (!doc || restored.current || !model.tokens.length) return;
     restored.current = true;
+    // A link from the Highlights list opens straight at that mark.
+    const wanted = window.location.hash.match(/m=([\w-]+)/)?.[1];
+    const target = wanted ? marksRef.current.find((m) => m.id === wanted) : null;
+    if (target) {
+      setSelectedId(target.id);
+      scrollToBlock(target.block, false);
+      return;
+    }
     const t = model.tokens[Math.min(doc.pos, model.tokens.length - 1)];
     if (t && t.block > 0) scrollToBlock(t.block, false);
   }, [doc, model, scrollToBlock]);
@@ -535,6 +640,36 @@ export default function Reader({ id }: { id: string }) {
     if (Date.now() - lastUserScroll.current < 4000) return;
     scrollToBlock(ttsSent.block);
   }, [ttsSent, scrollToBlock]);
+
+  // Keep the pop-up next to the tapped mark, below it when there is room and above it otherwise.
+  const placePopup = useCallback(() => {
+    const els = selectedId ? articleRef.current?.querySelectorAll('.mk.sel') : null;
+    if (!els || els.length === 0) {
+      setPopPos(null);
+      return;
+    }
+    const first = els[0].getBoundingClientRect();
+    const lastRect = els[els.length - 1].getBoundingClientRect();
+    const width = Math.min(376, window.innerWidth - 16);
+    const left = Math.max(8, Math.min(window.innerWidth - width - 8, first.left));
+    if (window.innerHeight - lastRect.bottom > 300) setPopPos({ top: lastRect.bottom + 10, left, width });
+    else setPopPos({ bottom: window.innerHeight - first.top + 10, left, width });
+  }, [selectedId]);
+
+  useLayoutEffect(() => {
+    placePopup();
+  }, [placePopup, marks]);
+
+  useEffect(() => {
+    const el = articleRef.current;
+    if (!el || !selectedId) return;
+    el.addEventListener('scroll', placePopup, { passive: true });
+    window.addEventListener('resize', placePopup);
+    return () => {
+      el.removeEventListener('scroll', placePopup);
+      window.removeEventListener('resize', placePopup);
+    };
+  }, [placePopup, selectedId, doc]);
 
   const marksByBlock = useMemo(() => {
     const map = new Map<number, Mark[]>();
@@ -654,27 +789,23 @@ export default function Reader({ id }: { id: string }) {
           >
             <Pencil />
           </button>
-          {(selected || hasPending) && (
+          {hasPending && (
             <>
               <span className="sep" aria-hidden="true" />
-              {selected && (
-                <button className="icon-btn" aria-label="Add a note to this mark" onClick={noteSelected}>
-                  <Note />
-                </button>
-              )}
               <button className="icon-btn" aria-label="Copy text" onPointerDown={(e) => e.preventDefault()} onClick={copyText}>
                 <Copy />
               </button>
-              {selected && (
-                <button className="icon-btn" aria-label="Delete this mark" onClick={removeSelected}>
-                  <Trash />
-                </button>
-              )}
             </>
           )}
         </nav>
 
-        <main className="article" ref={articleRef}>
+        <main
+          className="article"
+          ref={articleRef}
+          onClick={(e) => {
+            if (!(e.target as HTMLElement).closest('.mk')) setSelectedId(null);
+          }}
+        >
           <div className="article-inner serif" data-scope="article">
             <p className="label" style={{ fontFamily: 'Inter, system-ui, sans-serif', margin: 0 }}>
               {[doc.site, `${Math.max(1, Math.round(doc.words / 230))} min`].filter(Boolean).join(' · ')}
@@ -711,6 +842,21 @@ export default function Reader({ id }: { id: string }) {
           />
         )}
       </div>
+
+      {selected && popPos && (
+        <MarkPopup
+          mark={selected}
+          pos={popPos}
+          onColor={pickColor}
+          onStyle={pickStyle}
+          onResize={resizeSelected}
+          onFlag={toggleFlag}
+          onNote={noteSelected}
+          onCopy={copyText}
+          onDelete={removeSelected}
+          onClose={() => setSelectedId(null)}
+        />
+      )}
 
       {listening && (
         <Listen

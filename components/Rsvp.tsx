@@ -2,7 +2,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { pivotIndex, wordDelay, type TextModel } from '@/lib/text';
 import type { Doc, Mark, MarkColor, Settings, TextRange } from '@/lib/types';
-import { Close, Forward, NextSentence, Pause, Play, PrevSentence, Rewind } from './icons';
+import { SPOKEN_WPM, useSpeech } from '@/lib/useSpeech';
+import { Close, Forward, NextSentence, Pause, Play, PrevSentence, Rewind, Speaker } from './icons';
 import { StyleSwitch, Swatches } from './MarkBar';
 import { segClass } from './Reader';
 
@@ -28,18 +29,25 @@ export default function Rsvp({
   const { tokens, sentences } = model;
   const last = Math.max(0, tokens.length - 1);
   const [idx, setIdx] = useState(Math.min(startIdx, last));
-  const [playing, setPlaying] = useState(false);
+  const [timerPlaying, setPlaying] = useState(false);
   const [count, setCount] = useState(0);
   const curRef = useRef<HTMLSpanElement | null>(null);
+  const idxRef = useRef(idx);
+  idxRef.current = idx;
+
+  // With voice on, the spoken word drives the display instead of the timer.
+  const speech = useSpeech({ doc, model, rate: settings.rate, voiceURI: settings.voiceURI, onWord: setIdx });
+  const voice = settings.rsvpVoice && speech.supported;
+  const playing = voice ? speech.playing : timerPlaying;
 
   const tok = tokens[idx];
   const sent = tok ? sentences[tok.sent] : null;
   // Words shown together never cross a sentence end.
-  const n = tok && sent ? Math.max(1, Math.min(settings.chunk, sent.last - idx + 1)) : 1;
+  const n = tok && sent && !voice ? Math.max(1, Math.min(settings.chunk, sent.last - idx + 1)) : 1;
 
   // Countdown, then advance word by word with timing that follows punctuation and word length.
   useEffect(() => {
-    if (!playing || !tok) return;
+    if (voice || !timerPlaying || !tok) return;
     if (count > 0) {
       const t = window.setTimeout(() => setCount((c) => c - 1), 450);
       return () => window.clearTimeout(t);
@@ -51,16 +59,33 @@ export default function Rsvp({
       else setIdx(idx + n);
     }, delay);
     return () => window.clearTimeout(t);
-  }, [playing, count, idx, n, tok, tokens, last, settings.wpm]);
+  }, [voice, timerPlaying, count, idx, n, tok, tokens, last, settings.wpm]);
 
   const toggle = () => {
-    if (playing) setPlaying(false);
+    if (voice) {
+      if (speech.playing) speech.stop();
+      else speech.speakFrom(idx);
+    } else if (timerPlaying) setPlaying(false);
     else {
       setCount(3);
       setPlaying(true);
     }
   };
-  const jump = (i: number) => setIdx(Math.max(0, Math.min(last, i)));
+  const jump = (i: number) => {
+    const to = Math.max(0, Math.min(last, i));
+    setIdx(to);
+    if (voice && speech.playing) speech.speakFrom(to);
+  };
+  const toggleVoice = () => {
+    speech.stop();
+    setPlaying(false);
+    update({ rsvpVoice: !settings.rsvpVoice });
+  };
+  const setRate = (rate: number) => {
+    update({ rate });
+    // Restart after the new speed has been applied.
+    if (speech.playing) window.setTimeout(() => speech.speakFrom(idxRef.current), 0);
+  };
   const prevSentence = () => {
     if (!sent) return;
     jump(idx > sent.first ? sent.first : sentences[Math.max(0, sent.i - 1)].first);
@@ -80,8 +105,8 @@ export default function Rsvp({
         toggle();
       } else if (e.key === 'ArrowLeft') jump(idx - 10);
       else if (e.key === 'ArrowRight') jump(idx + 10);
-      else if (e.key === 'ArrowUp') update({ wpm: Math.min(900, settings.wpm + 25) });
-      else if (e.key === 'ArrowDown') update({ wpm: Math.max(100, settings.wpm - 25) });
+      else if (e.key === 'ArrowUp' && !voice) update({ wpm: Math.min(900, settings.wpm + 25) });
+      else if (e.key === 'ArrowDown' && !voice) update({ wpm: Math.max(100, settings.wpm - 25) });
       else if (e.key === 'Escape') onClose(idx);
     };
     window.addEventListener('keydown', onKey);
@@ -113,7 +138,8 @@ export default function Rsvp({
   if (shown[p] === ' ') p++;
 
   const remaining = tokens.length - idx;
-  const secs = Math.round((remaining / settings.wpm) * 60);
+  const pace = voice ? SPOKEN_WPM * settings.rate : settings.wpm;
+  const secs = Math.round((remaining / pace) * 60);
   const left = `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')} left`;
 
   const blockText = doc.blocks[tok.block].text;
@@ -131,9 +157,17 @@ export default function Rsvp({
             {doc.title}
           </span>
         </div>
-        <button className="pill" aria-pressed={settings.showContext} onClick={() => update({ showContext: !settings.showContext })}>
-          Context
-        </button>
+        <div className="group">
+          {speech.supported && (
+            <button className="pill" aria-pressed={voice} onClick={toggleVoice}>
+              <Speaker />
+              <span className="txt">{voice ? 'Voice on' : 'Voice'}</span>
+            </button>
+          )}
+          <button className="pill" aria-pressed={settings.showContext} onClick={() => update({ showContext: !settings.showContext })}>
+            Context
+          </button>
+        </div>
       </header>
 
       {settings.showContext && (
@@ -228,33 +262,55 @@ export default function Rsvp({
           </button>
         </div>
 
-        <div className="controls">
-          <div className="slider">
-            <label htmlFor="rsvp-wpm" className="top">
-              <span>Speed</span>
-              <b>{settings.wpm} wpm</b>
-            </label>
-            <input
-              id="rsvp-wpm"
-              type="range"
-              min={100}
-              max={900}
-              step={25}
-              value={settings.wpm}
-              onChange={(e) => update({ wpm: Number(e.target.value) })}
-            />
-          </div>
-          <div className="slider" style={{ flex: 'none', minWidth: 0 }}>
-            <span>Words at a time</span>
-            <div className="seg">
-              {([1, 2, 3] as const).map((c) => (
-                <button key={c} aria-pressed={settings.chunk === c} onClick={() => update({ chunk: c })}>
-                  {c}
-                </button>
-              ))}
+        {voice ? (
+          <div className="controls">
+            <div className="slider">
+              <label htmlFor="rsvp-rate" className="top">
+                <span>Voice speed</span>
+                <b>
+                  {settings.rate.toFixed(1)}x · about {Math.round(SPOKEN_WPM * settings.rate)} wpm
+                </b>
+              </label>
+              <input
+                id="rsvp-rate"
+                type="range"
+                min={0.5}
+                max={3}
+                step={0.1}
+                value={settings.rate}
+                onChange={(e) => setRate(Number(e.target.value))}
+              />
             </div>
           </div>
-        </div>
+        ) : (
+          <div className="controls">
+            <div className="slider">
+              <label htmlFor="rsvp-wpm" className="top">
+                <span>Speed</span>
+                <b>{settings.wpm} wpm</b>
+              </label>
+              <input
+                id="rsvp-wpm"
+                type="range"
+                min={100}
+                max={900}
+                step={25}
+                value={settings.wpm}
+                onChange={(e) => update({ wpm: Number(e.target.value) })}
+              />
+            </div>
+            <div className="slider" style={{ flex: 'none', minWidth: 0 }}>
+              <span>Words at a time</span>
+              <div className="seg">
+                {([1, 2, 3] as const).map((c) => (
+                  <button key={c} aria-pressed={settings.chunk === c} onClick={() => update({ chunk: c })}>
+                    {c}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
