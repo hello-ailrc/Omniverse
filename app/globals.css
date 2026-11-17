@@ -957,3 +957,41 @@ select.btn {
 .context-text .mk {
   border-radius: 0;
 }
+
+/* RSVP balance: colours sit with the context at the top, the word is centred in what remains */
+.rsvp-marks {
+  flex: none;
+  padding: 6px 20px;
+  border-bottom: 1px solid var(--line);
+}
+.stage {
+  position: relative;
+}
+.stage-hint {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 14px;
+  font-size: 13px;
+  text-align: center;
+}
+@media (max-width: 767px) {
+  .context-text {
+    max-height: 6.5em;
+    font-size: 16px;
+  }
+  .rsvp-bottom {
+    padding: 8px 16px calc(10px + env(safe-area-inset-bottom));
+    gap: 2px;
+  }
+  .rsvp-bottom .slider {
+    gap: 0;
+    font-size: 12px;
+  }
+  .rsvp-bottom input[type='range'] {
+    height: 24px;
+  }
+  .rsvp-bottom .transport {
+    margin: 4px 0;
+  }
+}
