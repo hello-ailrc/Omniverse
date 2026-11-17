@@ -315,6 +315,16 @@ export default function Reader({ id }: { id: string }) {
   const [ttsIdx, setTtsIdx] = useState<number | null>(null);
   const [toast, setToast] = useState('');
   const [popPos, setPopPos] = useState<CSSProperties | null>(null);
+  // On a phone the notebook is a pull-up sheet: closed until asked for, and never over the listening panel.
+  const [isPhone, setIsPhone] = useState(false);
+  const [phoneNotebook, setPhoneNotebook] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 767px)');
+    const sync = () => setIsPhone(mq.matches);
+    sync();
+    mq.addEventListener('change', sync);
+    return () => mq.removeEventListener('change', sync);
+  }, []);
 
   const pendingRef = useRef<TextRange[]>([]);
   const articleRef = useRef<HTMLElement | null>(null);
@@ -725,10 +735,11 @@ export default function Reader({ id }: { id: string }) {
   const selected = marks.find((m) => m.id === selectedId) ?? null;
   const shownColor = selected ? selected.color : settings.armedColor;
   const shownStyle = selected ? selected.style : settings.armedStyle;
+  const showNotebook = isPhone ? phoneNotebook && !listening : settings.notebook;
   const pct = model.tokens.length ? Math.round((pos / model.tokens.length) * 100) : 0;
 
   return (
-    <div className={'reader' + (settings.penMode ? ' pen-on' : '')}>
+    <div className={'reader' + (settings.penMode ? ' pen-on' : '') + (listening ? ' is-listening' : '')}>
       <header className="topbar">
         <div className="group">
           <Link href="/" className="icon-btn" aria-label="Back to library" style={{ color: 'inherit' }}>
@@ -759,8 +770,8 @@ export default function Reader({ id }: { id: string }) {
           <button
             className="icon-btn"
             aria-label="Notebook"
-            aria-pressed={settings.notebook}
-            onClick={() => update({ notebook: !settings.notebook })}
+            aria-pressed={showNotebook}
+            onClick={() => (isPhone ? setPhoneNotebook((v) => !v) : update({ notebook: !settings.notebook }))}
           >
             <Panel />
           </button>
@@ -831,11 +842,12 @@ export default function Reader({ id }: { id: string }) {
           </div>
         </main>
 
-        {settings.notebook && (
+        {showNotebook && (
           <Notebook
             marks={marks}
             onExport={exportMarks}
             onOpen={(m) => {
+              setPhoneNotebook(false);
               setSelectedId(m.id);
               scrollToBlock(m.block);
             }}
