@@ -181,7 +181,7 @@ input[type='range'] {
 .library {
   max-width: 760px;
   margin: 0 auto;
-  padding: 28px 20px 80px;
+  padding: calc(28px + env(safe-area-inset-top)) 20px 80px;
   display: flex;
   flex-direction: column;
   gap: 24px;
@@ -260,7 +260,8 @@ textarea.field {
   flex-direction: column;
 }
 .topbar {
-  height: 60px;
+  min-height: calc(60px + env(safe-area-inset-top));
+  padding-top: env(safe-area-inset-top) !important;
   flex: none;
   display: flex;
   align-items: center;
@@ -519,7 +520,7 @@ textarea.field {
 /* Settings popover */
 .sheet {
   position: absolute;
-  top: 64px;
+  top: calc(64px + env(safe-area-inset-top));
   right: 10px;
   z-index: 30;
   width: min(340px, calc(100vw - 20px));
@@ -895,6 +896,42 @@ select.btn {
   .pill .txt {
     display: none;
   }
+  /* Phone: one compact line of colours, less chrome, more text */
+  .mark-label {
+    display: none;
+  }
+  .mark-row {
+    flex-wrap: nowrap;
+    gap: 0;
+    justify-content: space-between !important;
+  }
+  .mark-row .swatch,
+  .mark-row .mode {
+    width: 44px;
+  }
+  .is-listening .rail {
+    display: none;
+  }
+  .rsvp .topbar {
+    gap: 4px;
+  }
+  .now,
+  .rsvp-bottom {
+    gap: 6px;
+  }
+  .t-btn {
+    height: 46px;
+  }
+  .t-play {
+    width: 56px;
+    height: 56px;
+  }
+  .context {
+    padding: 8px 20px 10px;
+  }
+  .context .label {
+    display: none;
+  }
   .pill {
     padding: 0 12px;
   }
@@ -914,4 +951,9 @@ select.btn {
   .t-btn {
     width: 58px;
   }
+}
+
+/* A highlight in the RSVP context strip reads as one continuous band */
+.context-text .mk {
+  border-radius: 0;
 }

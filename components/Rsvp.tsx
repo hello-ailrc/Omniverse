@@ -149,15 +149,15 @@ export default function Rsvp({
   return (
     <div className="rsvp" role="dialog" aria-label="RSVP">
       <header className="topbar">
-        <div className="group">
+        <div className="group" style={{ flex: 1 }}>
           <button className="icon-btn" aria-label="Close RSVP and return to the article" onClick={() => onClose(idx)}>
             <Close />
           </button>
-          <span className="muted" style={{ fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          <span className="muted" style={{ fontSize: 14, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {doc.title}
           </span>
         </div>
-        <div className="group">
+        <div className="group" style={{ flex: 'none' }}>
           {speech.supported && (
             <button className="pill" aria-pressed={voice} onClick={toggleVoice}>
               <Speaker />
@@ -175,7 +175,9 @@ export default function Rsvp({
           <span className="label">Tap a word to jump · select words to mark them</span>
           <p className="context-text serif" data-scope="context" data-b={tok.block} data-off={0}>
             {blockTokens.map((t, k) => {
-              const before = blockText.slice(k === 0 ? 0 : blockTokens[k - 1].end, t.start);
+              const gapStart = k === 0 ? 0 : blockTokens[k - 1].end;
+              const before = blockText.slice(gapStart, t.start);
+              const gapMarks = k === 0 ? [] : blockMarks.filter((m) => m.start < t.start && m.end > gapStart);
               const covering = blockMarks.filter((m) => m.start < t.end && m.end > t.start);
               const cls = ['w', segClass(covering, null, false, false)];
               if (t.sent === tok.sent) cls.push('in-sent');
@@ -183,7 +185,7 @@ export default function Rsvp({
               if (isCur) cls.push('cur');
               return (
                 <span key={t.i}>
-                  {before}
+                  <span className={segClass(gapMarks, null, false, false) || undefined}>{before}</span>
                   <span
                     ref={t.i === idx ? curRef : undefined}
                     className={cls.filter(Boolean).join(' ')}
@@ -223,7 +225,7 @@ export default function Rsvp({
 
       <div className="rsvp-bottom">
         <div className="mark-row" style={{ justifyContent: 'center' }}>
-          <span className="muted" style={{ fontSize: 13, marginRight: 4 }}>
+          <span className="muted mark-label" style={{ fontSize: 13, marginRight: 4 }}>
             Mark this sentence
           </span>
           <Swatches color={null} style={settings.armedStyle} onPick={(c) => onMark(sent, c)} />

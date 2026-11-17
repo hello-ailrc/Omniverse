@@ -162,7 +162,7 @@ export default function Listen({
       )}
 
       <div className="mark-row">
-        <span className="muted" style={{ fontSize: 13, marginRight: 4 }}>
+        <span className="muted mark-label" style={{ fontSize: 13, marginRight: 4 }}>
           Mark this sentence
         </span>
         <Swatches color={null} style={settings.armedStyle} onPick={(c) => onMark(sent, c)} />
