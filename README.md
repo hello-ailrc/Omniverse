@@ -20,13 +20,28 @@ Then open http://localhost:3000.
 - RSVP with a context strip, focus letter, sentence and 10-word seek, speed and words-at-a-time controls, "mark this sentence", and an optional voice that reads along.
 - Listening with the device's built-in voices, a Now Reading panel (sentence or RSVP view), sentence and 5-second seek, speed and voice controls.
 
+## Sync between devices
+
+Articles, marks, notes, flags and reading position sync through Supabase. Each device keeps a full copy and works offline; changes are sent when it is back online, and the most recent change wins. Appearance settings stay per device.
+
+Setup, once:
+
+1. In Supabase, run `supabase/schema.sql` in the SQL Editor.
+2. In Supabase, set Authentication > URL Configuration > Site URL to the app's address.
+3. In Vercel, add the environment variables `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (the anon key also works, as `NEXT_PUBLIC_SUPABASE_ANON_KEY`), then redeploy.
+4. In the app, tap Sign in in the library, create an account, confirm the email, and sign in on each device.
+5. In Supabase, turn off new sign-ups so nobody else can create an account.
+
+Without the environment variables the app works as before, on one device only.
+
 ## Not yet built
 
-- Accounts and sync between devices (everything is stored in the browser on each device for now).
 - Browser extension, RSS, newsletters, PDFs, offline app shell, and the Kokoro voice.
 
 ## Where things live
 
-- `lib/store.ts` is the only file that reads or writes saved data. Cloud sync goes behind it.
+- `lib/store.ts` is the only file that reads or writes saved data on the device, and keeps the outbox of changes to send.
+- `lib/sync.ts` sends the outbox to Supabase, brings in changes from other devices, and handles sign-in.
+- `supabase/schema.sql` creates the tables, per-user access rules and the newest-change-wins rule.
 - `lib/text.ts` holds the word and sentence model shared by the reader, RSVP and listening.
 - `app/api/extract/route.ts` fetches a page and reduces it to plain text blocks.

@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
+import SyncBoot from '@/components/SyncBoot';
 
 export const metadata: Metadata = {
   title: 'Reader',
@@ -17,7 +18,10 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" data-theme="charcoal">
-      <body>{children}</body>
+      <body>
+        <SyncBoot />
+        {children}
+      </body>
     </html>
   );
 }

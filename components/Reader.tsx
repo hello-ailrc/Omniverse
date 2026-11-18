@@ -1,7 +1,7 @@
 'use client';
 import Link from 'next/link';
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
-import { getDoc, getMarks, newId, savePosition, setMarks as persistMarks } from '@/lib/store';
+import { getDoc, getMarks, newId, putMarks, removeMarks, savePosition } from '@/lib/store';
 import { buildText, segmentsOf, selectionRanges } from '@/lib/text';
 import {
   COLORS,
@@ -354,14 +354,31 @@ export default function Reader({ id }: { id: string }) {
     window.setTimeout(() => setToast(''), 1800);
   }, []);
 
-  const commit = useCallback(
-    (next: Mark[]) => {
-      marksRef.current = next;
-      setMarksState(next);
-      persistMarks(id, next);
-    },
-    [id],
-  );
+  // Every local edit bumps this, so a reload started before the edit is redone after it.
+  const editSeq = useRef(0);
+  const setLocal = useCallback((next: Mark[]) => {
+    editSeq.current++;
+    marksRef.current = next;
+    setMarksState(next);
+  }, []);
+
+  // Marks changed on another device: reload them from the device store.
+  useEffect(() => {
+    const reload = () => {
+      const seq = editSeq.current;
+      getMarks(id).then((m) => {
+        if (seq !== editSeq.current) return reload();
+        marksRef.current = m;
+        setMarksState(m);
+      });
+    };
+    const onChanged = (e: Event) => {
+      const docs = (e as CustomEvent<{ docs: string[] }>).detail?.docs ?? [];
+      if (docs.includes(id)) reload();
+    };
+    window.addEventListener('omniverse:changed', onChanged);
+    return () => window.removeEventListener('omniverse:changed', onChanged);
+  }, [id]);
 
   const addMarks = useCallback(
     (ranges: TextRange[], color: MarkColor, style: MarkStyle, flag = false) => {
@@ -379,16 +396,21 @@ export default function Reader({ id }: { id: string }) {
         text: doc.blocks[r.block].text.slice(r.start, r.end),
         createdAt: now + k,
       }));
-      commit([...marksRef.current, ...made]);
+      setLocal([...marksRef.current, ...made]);
+      putMarks(id, made);
     },
-    [doc, id, commit],
+    [doc, id, setLocal],
   );
 
   const patchMark = useCallback(
     (markId: string, patch: Partial<Mark>) => {
-      commit(marksRef.current.map((m) => (m.id === markId ? { ...m, ...patch } : m)));
+      const m = marksRef.current.find((x) => x.id === markId);
+      if (!m) return;
+      const updated = { ...m, ...patch };
+      setLocal(marksRef.current.map((x) => (x.id === markId ? updated : x)));
+      putMarks(id, [updated]);
     },
-    [commit],
+    [id, setLocal],
   );
 
   const clearSelection = () => {
@@ -435,9 +457,10 @@ export default function Reader({ id }: { id: string }) {
 
   const removeSelected = useCallback(() => {
     if (!selectedId) return;
-    commit(marksRef.current.filter((m) => m.id !== selectedId));
+    setLocal(marksRef.current.filter((m) => m.id !== selectedId));
+    removeMarks(id, [selectedId]);
     setSelectedId(null);
-  }, [commit, selectedId]);
+  }, [id, setLocal, selectedId]);
 
   // Grow or shrink a mark by one word at either end.
   const resizeSelected = (edge: 'start' | 'end', dir: -1 | 1) => {

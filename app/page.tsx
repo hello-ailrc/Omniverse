@@ -6,6 +6,7 @@ import { buildText } from '@/lib/text';
 import { TAG_ORDER, swatchVar, tagOf, type Block, type Doc, type DocMeta, type Mark } from '@/lib/types';
 import { useSettings } from '@/lib/useSettings';
 import { Trash } from '@/components/icons';
+import SyncPanel from '@/components/SyncPanel';
 
 function textToBlocks(text: string): Block[] {
   return text
@@ -25,7 +26,11 @@ function Highlights() {
   const [filter, setFilter] = useState('All');
 
   useEffect(() => {
-    getAllMarks().then((r) => setRows(r.sort((a, b) => b.mark.createdAt - a.mark.createdAt)));
+    const load = () => getAllMarks().then((r) => setRows(r.sort((a, b) => b.mark.createdAt - a.mark.createdAt)));
+    load();
+    // Refresh when changes arrive from another device.
+    window.addEventListener('omniverse:changed', load);
+    return () => window.removeEventListener('omniverse:changed', load);
   }, []);
 
   const chips = useMemo(() => {
@@ -133,7 +138,10 @@ export default function Library() {
   };
 
   useEffect(() => {
-    listDocs().then(setDocs);
+    const load = () => listDocs().then(setDocs);
+    load();
+    window.addEventListener('omniverse:changed', load);
+    return () => window.removeEventListener('omniverse:changed', load);
   }, []);
 
   async function store(partial: { title: string; url?: string; site?: string; byline?: string; blocks: Block[] }) {
@@ -194,6 +202,7 @@ export default function Library() {
     <main className="library">
       <div className="lib-head">
         <h1>Library</h1>
+        <SyncPanel />
         <div className="seg" role="group" aria-label="Library section">
           <button aria-pressed={tab === 'articles'} onClick={() => pickTab('articles')}>
             Articles

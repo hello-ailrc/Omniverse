@@ -9,6 +9,7 @@ export type DocMeta = {
   savedAt: number;
   words: number;
   pos: number; // index of the word the reader has reached
+  updatedAt?: number; // when this device last changed it, for sync
 };
 
 export type Doc = DocMeta & { blocks: Block[] };
@@ -28,6 +29,7 @@ export type Mark = {
   note?: string;
   text: string;
   createdAt: number;
+  updatedAt?: number; // when it was last changed, for sync
 };
 
 export type TextRange = { block: number; start: number; end: number };
