@@ -40,3 +40,4 @@ export const ChevronDown = () => <Svg><path d="M6 9l6 6 6-6" /></Svg>;
 export const ArrowLeft = () => <Svg size={18}><path d="M19 12H5M11 6l-6 6 6 6" /></Svg>;
 export const ArrowRight = () => <Svg size={18}><path d="M5 12h14M13 6l6 6-6 6" /></Svg>;
 export const Speaker = () => <Svg size={18}><path d="M4 10v4h4l5 4V6L8 10H4z" /><path d="M17 9a4 4 0 010 6" /></Svg>;
+export const Cloud = () => <Svg size={18}><path d="M7 18h10a4 4 0 00.6-7.96A6 6 0 006.1 9.1 4.5 4.5 0 007 18z" /></Svg>;

@@ -995,3 +995,57 @@ select.btn {
     margin: 4px 0;
   }
 }
+
+/* Sync */
+.sync-btn {
+  height: 44px;
+  padding: 0 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: 1px solid var(--line2);
+  border-radius: 22px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--muted);
+  margin-left: auto;
+}
+.sync-btn.bad {
+  color: var(--sw-red);
+  border-color: color-mix(in srgb, var(--sw-red) 55%, var(--bg));
+}
+.sync-sheet {
+  position: fixed;
+  z-index: 50;
+  top: calc(80px + env(safe-area-inset-top));
+  right: max(12px, calc((100vw - 760px) / 2 + 20px));
+  width: min(380px, calc(100vw - 24px));
+  background: var(--panel);
+  border: 1px solid var(--line2);
+  border-radius: 14px;
+  padding: 12px 16px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+  font-size: 14px;
+  line-height: 1.45;
+}
+.sync-sheet .row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.sync-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.sync-form label {
+  font-size: 13px;
+  color: var(--muted);
+}
+.sync-form .field {
+  flex: none;
+}
