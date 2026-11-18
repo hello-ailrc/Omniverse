@@ -8,7 +8,12 @@ import * as store from './store';
 import type { Block, Doc, Mark, MarkColor, MarkStyle } from './types';
 
 const URL_ = process.env.NEXT_PUBLIC_SUPABASE_URL ?? '';
-const KEY = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+// Accepts the key under any of the names Supabase's Connect dialog has used.
+const KEY =
+  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
+  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_OR_ANON_KEY ||
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+  '';
 export const syncConfigured = Boolean(URL_ && KEY);
 
 export type SyncState = 'off' | 'signed-out' | 'syncing' | 'synced' | 'offline' | 'error';

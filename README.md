@@ -28,7 +28,7 @@ Setup, once:
 
 1. In Supabase, run `supabase/schema.sql` in the SQL Editor.
 2. In Supabase, set Authentication > URL Configuration > Site URL to the app's address.
-3. In Vercel, add the environment variables `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (the anon key also works, as `NEXT_PUBLIC_SUPABASE_ANON_KEY`), then redeploy.
+3. In Vercel, add the environment variables `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (the names shown in Supabase's Connect dialog for Next.js also work: `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_OR_ANON_KEY` or `NEXT_PUBLIC_SUPABASE_ANON_KEY`), then redeploy.
 4. In the app, tap Sign in in the library, create an account, confirm the email, and sign in on each device.
 5. In Supabase, turn off new sign-ups so nobody else can create an account.
 
